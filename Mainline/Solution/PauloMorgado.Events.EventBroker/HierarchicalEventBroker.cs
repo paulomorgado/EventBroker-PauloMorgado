@@ -64,10 +64,10 @@ namespace PauloMorgado.Events
 
             Contract.Assume(this.sync != null, "sync is null");
 
+            this.sync.EnterWriteLock();
+
             try
             {
-                this.sync.EnterWriteLock();
-
                 Contract.Assume(this.children != null, "children is null");
 
                 this.children.Add(newChild);
