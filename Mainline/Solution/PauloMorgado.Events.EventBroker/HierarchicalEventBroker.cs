@@ -13,6 +13,7 @@
 namespace PauloMorgado.Events
 {
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Diagnostics.Contracts;
     using System.Threading;
 
@@ -21,6 +22,11 @@ namespace PauloMorgado.Events
     /// </summary>
     public class HierarchicalEventBroker : EventBroker
     {
+        /// <summary>
+        /// The trace source.
+        /// </summary>
+        private readonly TraceSource traceSource = new TraceSource("PauloMorgado.Events.HierarchicalEventBroker", SourceLevels.Error);
+
         /// <summary>
         /// Synchronizes access to the <see cref="F:subscriptions" />.
         /// </summary>
@@ -51,6 +57,15 @@ namespace PauloMorgado.Events
         private HierarchicalEventBroker(HierarchicalEventBroker parent)
         {
             this.parent = parent;
+        }
+
+        /// <summary>
+        /// Gets the trace source.
+        /// </summary>
+        /// <value>The trace source.</value>
+        protected override TraceSource TraceSource
+        {
+            get { return this.traceSource; }
         }
 
         /// <summary>

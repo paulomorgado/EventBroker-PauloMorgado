@@ -47,6 +47,7 @@
     <CodeContractsBaseLineFile />
     <CodeContractsRuntimeCheckingLevel>Pre and Post</CodeContractsRuntimeCheckingLevel>
     <CodeContractsReferenceAssembly>%28none%29</CodeContractsReferenceAssembly>
+    <RunCodeAnalysis>true</RunCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -66,6 +67,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="EventBroker+EventInfo.cs" />
+    <Compile Include="EventBroker+EventSubscriptionInfo.cs" />
     <Compile Include="EventBroker.cs" />
     <Compile Include="EventData.cs" />
     <Compile Include="HierarchicalEventBroker.cs" />

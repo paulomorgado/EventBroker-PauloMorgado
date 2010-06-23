@@ -13,53 +13,113 @@ namespace TestConsoleApplication
 
         static void Main(string[] args)
         {
+            Console.WriteLine("Creating event brokers");
             var events1 = new HierarchicalEventBroker();
             var events11 = events1.CreateChild();
             var events12 = events1.CreateChild();
             var events111 = events11.CreateChild();
             var events121 = events12.CreateChild();
-
-            events1.Subscribe("event", "subscriber1", e => Handler("subscriber1", e));
-            events11.Subscribe("event", "subscriber1", e => Handler("subscriber1", e));
-            events12.Subscribe("event", "subscriber2", e => Handler("subscriber2", e));
-            events111.Subscribe("event", "subscriber2", e => Handler("subscriber2", e));
-            events121.Subscribe("event", "subscriber1", e => Handler("subscriber1", e));
-
-            events1.Publish("event", "publisher 1", EventArgs.Empty);
             Console.WriteLine();
 
-            events11.Publish("event", "publisher 11", EventArgs.Empty);
-            Console.WriteLine();
+            SubscribeEvent(events1, "event", "subscriber1");
+            SubscribeEvent(events11, "event", "subscriber1");
+            SubscribeEvent(events12, "event", "subscriber2");
+            SubscribeEvent(events111, "event", "subscriber2");
+            SubscribeEvent(events121, "event", "subscriber1");
 
-            events12.Publish("event", "publisher 12", CancelEventArgs.Empty);
-            Console.WriteLine();
-
-            events111.Publish("event", "publisher 111", EventArgs.Empty);
-            Console.WriteLine();
-
-            events121.Publish("event", "publisher 121", EventArgs.Empty);
-            Console.WriteLine();
+            PublishEvent(events1, "event", "publisher 1", EventArgs.Empty);
+            PublishEvent(events11, "event", "publisher 11", EventArgs.Empty);
+            PublishEvent(events12, "event", "publisher 12", EventArgs.Empty);
+            PublishEvent(events111, "event", "publisher 111", EventArgs.Empty);
+            PublishEvent(events121, "event", "publisher 121", EventArgs.Empty);
 
             events12.Unsubscribe("subscriber2");
             events111.Unsubscribe("subscriber2");
 
-            events1.Publish("event", "publisher 1", EventArgs.Empty);
+            PublishEvent(events1, "event", "publisher 1", EventArgs.Empty);
+            PublishEvent(events11, "event", "publisher 11", EventArgs.Empty);
+            PublishEvent(events12, "event", "publisher 12", new CancelEventArgs());
+            PublishEvent(events111, "event", "publisher 111", EventArgs.Empty);
+            PublishEvent(events121, "event", "publisher 121", new CancelEventArgs());
+
+            Console.WriteLine();
+            events1.AcquireExclusive("event", "publisher 1");
             Console.WriteLine();
 
-            events11.Publish("event", "publisher 11", EventArgs.Empty);
+            try
+            {
+                events1.AcquireExclusive("event", "publisher 1");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
             Console.WriteLine();
 
-            events12.Publish("event", "publisher 12", CancelEventArgs.Empty);
+            try
+            {
+                events1.AcquireExclusive("event", "publisher 2");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
             Console.WriteLine();
 
-            events111.Publish("event", "publisher 111", EventArgs.Empty);
+            try
+            {
+                events1.ReleaseExclusive("event", "publisher 2");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
             Console.WriteLine();
 
-            events121.Publish("event", "publisher 121", EventArgs.Empty);
-            Console.WriteLine();
+            PublishEvent(events1, "event", "publisher 2", EventArgs.Empty);
 
-            events12.Dispose();
-            events12.Publish("event", "publisher disposed 12", EventArgs.Empty);
+            try
+            {
+                events12.Dispose();
+                events12.Publish("event", "publisher disposed 12", EventArgs.Empty);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            Console.WriteLine();
+        }
+
+        private static void SubscribeEvent(EventBroker eventBroker, string @event, string subscriber)
+        {
+            Console.WriteLine("Subscribing to event. Event: {0}, Subscriber: {1}", @event, subscriber);
+
+            try
+            {
+                eventBroker.Subscribe(@event, subscriber, e => Handler(subscriber, e));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+
+            Console.WriteLine();
+        }
+
+        private static void PublishEvent(EventBroker eventBroker, string @event, string publisher, EventArgs eventArgs)
+        {
+            Console.WriteLine("Publishing event. Event: {0}, Publisher: {1}", @event, publisher);
+
+            try
+            {
+                eventBroker.Publish(@event, publisher, eventArgs);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+
+            Console.WriteLine();
         }
     }
 }
