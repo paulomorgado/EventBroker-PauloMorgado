@@ -20,7 +20,7 @@ namespace PauloMorgado.Events
     /// <summary>
     /// An hierarchical implementation of an <see cref="T:EventBroker" />.
     /// </summary>
-    public class HierarchicalEventBroker : EventBroker
+    public partial class HierarchicalEventBroker : EventBroker
     {
         /// <summary>
         /// The trace source.
@@ -43,18 +43,35 @@ namespace PauloMorgado.Events
         private readonly HierarchicalEventBroker parent;
 
         /// <summary>
+        /// The default publication options.
+        /// </summary>
+        private readonly PublicationOptions defaultPublicationOptions;
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="HierarchicalEventBroker"/> class.
         /// </summary>
         public HierarchicalEventBroker()
-            : base()
+            : this(PublicationOptions.TopDown)
         {
         }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="HierarchicalEventBroker"/> class.
         /// </summary>
+        /// <param name="defaultPublicationOptions">The default publication options.</param>
+        public HierarchicalEventBroker(PublicationOptions defaultPublicationOptions)
+            : base()
+        {
+            this.defaultPublicationOptions = defaultPublicationOptions;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="HierarchicalEventBroker"/> class.
+        /// </summary>
         /// <param name="parent">The parent <see cref="HierarchicalEventBroker"/>.</param>
-        private HierarchicalEventBroker(HierarchicalEventBroker parent)
+        /// <param name="defaultPublicationOptions">The default publication options.</param>
+        private HierarchicalEventBroker(HierarchicalEventBroker parent, PublicationOptions defaultPublicationOptions)
+            : this(defaultPublicationOptions)
         {
             this.parent = parent;
         }
@@ -75,7 +92,20 @@ namespace PauloMorgado.Events
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "The object is returned and disposed on the Dispose(bool) method of this instance.")]
         public HierarchicalEventBroker CreateChild()
         {
-            HierarchicalEventBroker newChild = new HierarchicalEventBroker(this);
+            return this.CreateChild(this.defaultPublicationOptions);
+        }
+
+        /// <summary>
+        /// Creates a child <see cref="HierarchicalEventBroker"/> overriding the current The default publication options.
+        /// </summary>
+        /// <param name="defaultPublicationOptions">The default publication options.</param>
+        /// <returns>
+        /// The created child <see cref="HierarchicalEventBroker"/>.
+        /// </returns>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "The object is returned and disposed on the Dispose(bool) method of this instance.")]
+        public HierarchicalEventBroker CreateChild(PublicationOptions defaultPublicationOptions)
+        {
+            HierarchicalEventBroker newChild = new HierarchicalEventBroker(this, this.defaultPublicationOptions);
 
             Contract.Assume(this.sync != null, "sync is null");
 
@@ -138,9 +168,16 @@ namespace PauloMorgado.Events
             {
                 this.sync.EnterReadLock();
 
-                if ((this.children != null) && (this.children.Count > 0))
+                if (((this.defaultPublicationOptions == PublicationOptions.All) || (this.defaultPublicationOptions == PublicationOptions.TopDown))
+                    && ((this.children != null) && (this.children.Count > 0)))
                 {
                     this.children.ForEach(c => c.PublishInternal(eventData));
+                }
+
+                if (((this.defaultPublicationOptions == PublicationOptions.All) || (this.defaultPublicationOptions == PublicationOptions.BottomUp))
+                    && (this.parent != null))
+                {
+                    this.parent.PublishInternal(eventData);
                 }
             }
             finally
