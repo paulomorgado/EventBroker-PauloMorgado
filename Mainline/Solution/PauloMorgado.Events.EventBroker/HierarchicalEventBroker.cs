@@ -105,7 +105,7 @@ namespace PauloMorgado.Events
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "The object is returned and disposed on the Dispose(bool) method of this instance.")]
         public HierarchicalEventBroker CreateChild(PublicationOptions defaultPublicationOptions)
         {
-            HierarchicalEventBroker newChild = new HierarchicalEventBroker(this, this.defaultPublicationOptions);
+            HierarchicalEventBroker newChild = new HierarchicalEventBroker(this, defaultPublicationOptions);
 
             Contract.Assume(this.sync != null, "sync is null");
 
