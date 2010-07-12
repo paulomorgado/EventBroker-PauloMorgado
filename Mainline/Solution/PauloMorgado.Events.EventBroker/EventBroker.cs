@@ -26,7 +26,7 @@ namespace PauloMorgado.Events
         /// <summary>
         /// The trace source.
         /// </summary>
-        private readonly TraceSource traceSource = new TraceSource("PauloMorgado.Events.EventBroker", SourceLevels.Error);
+        private readonly TraceSource traceSource;
 
         /// <summary>
         /// Synchronizes access to the <see cref="F:subscriptions" />.
@@ -36,7 +36,7 @@ namespace PauloMorgado.Events
         /// <summary>
         /// The list of subscriptions.
         /// </summary>
-        private Dictionary<object, EventInfo> events = new Dictionary<object, EventInfo>();
+        private readonly Dictionary<object, EventInfo> events = new Dictionary<object, EventInfo>();
 
         /// <summary>
         /// <see langword="true" /> if this instance has already been disposed; otherwise <see langword="false" />.
@@ -47,7 +47,19 @@ namespace PauloMorgado.Events
         /// Initializes a new instance of the <see cref="EventBroker"/> class.
         /// </summary>
         public EventBroker()
+            : this(new TraceSource("PauloMorgado.Events.EventBroker", SourceLevels.Error))
         {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="EventBroker"/> class.
+        /// </summary>
+        /// <param name="traceSource">The trace source.</param>
+        protected EventBroker(TraceSource traceSource)
+        {
+            Contract.Requires(traceSource != null, "traceSource is null.");
+
+            this.traceSource = traceSource;
         }
 
         /// <summary>
@@ -62,7 +74,7 @@ namespace PauloMorgado.Events
         /// Gets the trace source.
         /// </summary>
         /// <value>The trace source.</value>
-        protected virtual TraceSource TraceSource
+        protected TraceSource TraceSource
         {
             get { return this.traceSource; }
         }
@@ -118,9 +130,6 @@ namespace PauloMorgado.Events
 
             this.EnsureNotDisposed();
 
-            Contract.Assume(this.events != null, "events is null");
-            Contract.Assume(this.sync != null, "sync is null");
-
             try
             {
                 this.sync.EnterWriteLock();
@@ -150,9 +159,6 @@ namespace PauloMorgado.Events
             Contract.Requires(handler != null, "handler is null.");
 
             this.EnsureNotDisposed();
-
-            Contract.Assume(this.sync != null, "sync is null");
-            Contract.Assume(this.events != null, "subscriptions is null");
 
             this.sync.EnterWriteLock();
 
@@ -189,9 +195,6 @@ namespace PauloMorgado.Events
 
             this.EnsureNotDisposed();
 
-            Contract.Assume(this.sync != null, "sync is null");
-            Contract.Assume(this.events != null, "subscriptions is null");
-
             try
             {
                 this.sync.EnterWriteLock();
@@ -223,6 +226,9 @@ namespace PauloMorgado.Events
         /// </exception>
         public void AcquireExclusive(object @event, object publisher)
         {
+            Contract.Requires(@event != null, "event is null.");
+            Contract.Requires(publisher != null, "publisher is null.");
+
             if (!this.TryAcquireExclusiveInternal(@event, publisher))
             {
                 throw new InvalidOperationException("Exclusive publication has been aquired by another publisher.");
@@ -253,6 +259,9 @@ namespace PauloMorgado.Events
         /// </exception>
         public void ReleaseExclusive(object @event, object publisher)
         {
+            Contract.Requires(@event != null, "event is null.");
+            Contract.Requires(publisher != null, "publisher is null.");
+
             if (!this.TryReleaseExclusiveInternal(@event, publisher))
             {
                 throw new InvalidOperationException("Exclusive publication has been aquired by another publisher.");
@@ -283,8 +292,6 @@ namespace PauloMorgado.Events
             {
                 this.EnsureNotDisposed();
 
-                Contract.Assume(this.sync != null, "sync is null");
-
                 this.sync.Dispose();
 
                 this.disposed = true;
@@ -297,9 +304,7 @@ namespace PauloMorgado.Events
         /// <param name="eventData">The <see cref="T:EventData"/> instance containing the event data.</param>
         protected virtual void PublishInternal(EventData eventData)
         {
-            Contract.Assume(eventData != null, "eventData is null");
-            Contract.Assume(this.sync != null, "sync is null");
-            Contract.Assume(this.TraceSource != null, "TraceSource is null");
+            Contract.Requires(eventData != null, "eventData is null");
 
             this.TraceSource.TraceEvent(TraceEventType.Information, 0, "Publishing event: {0}", eventData.Event);
 
@@ -309,8 +314,6 @@ namespace PauloMorgado.Events
 
             try
             {
-                Contract.Assume(this.events != null, "events is null");
-
                 EventInfo eventInfo;
 
                 if (this.events.TryGetValue(eventData.Event, out eventInfo))
@@ -322,6 +325,8 @@ namespace PauloMorgado.Events
 
                     foreach (var subscription in eventInfo.Subscriptions)
                     {
+                        Contract.Assume(subscription.Handler != null, "subscription.Handler is null");
+
                         CallEventSubscriptionHandler(subscription, eventData);
                     }
                 }
@@ -348,13 +353,11 @@ namespace PauloMorgado.Events
 
         private void CheckAllowedPublisher(EventInfo eventInfo, EventData eventData)
         {
-            Contract.Assume(eventInfo != null, "eventInfo is null");
-            Contract.Assume(eventData != null, "eventData is null");
+            Contract.Requires(eventInfo != null, "eventInfo is null");
+            Contract.Requires(eventData != null, "eventData is null");
 
             if ((eventInfo.Publisher != null) && !eventInfo.Publisher.Equals(eventData.Publisher))
             {
-                Contract.Assume(this.TraceSource != null, "TraceSource is null");
-
                 this.TraceSource.TraceEvent(
                    TraceEventType.Error,
                    0,
@@ -373,8 +376,8 @@ namespace PauloMorgado.Events
         /// <param name="eventData">The <see cref="T:EventData"></see> instance containing the event data.</param>
         private void CallEventSubscriptionHandler(EventSubscriptionInfo subscription, EventData eventData)
         {
-            Contract.Assume(subscription.Handler != null, "subscription.Handler is null");
-            Contract.Assume(eventData != null, "eventData is null");
+            Contract.Requires(subscription.Handler != null, "subscription.Handler is null");
+            Contract.Requires(eventData != null, "eventData is null");
 
             try
             {
@@ -399,9 +402,8 @@ namespace PauloMorgado.Events
         /// <remarks>If the requested event information doesn't exit, it's created and added to the list.</remarks>
         private EventInfo GetEventInfo(object @event)
         {
+            Contract.Requires(@event != null, "event is null.");
             Contract.Ensures(Contract.Result<EventInfo>() != null);
-            Contract.Assume(@event != null, "event is null.");
-            Contract.Assume(this.events != null, "events is null");
 
             EventInfo eventInfo;
             if (!this.events.TryGetValue(@event, out eventInfo))
@@ -423,8 +425,8 @@ namespace PauloMorgado.Events
         /// <returns><see langword="true" /> if exclusive publication hadn't been acquired by another publisher; otherwise <see langword="false" />.</returns>
         private bool TryAcquireExclusiveInternal(object @event, object publisher)
         {
-            Contract.Assume(@event != null, "event is null.");
-            Contract.Assume(publisher != null, "publisher is null.");
+            Contract.Requires(@event != null, "event is null.");
+            Contract.Requires(publisher != null, "publisher is null.");
 
             EventInfo eventInfo = GetEventInfo(@event);
 
@@ -440,8 +442,8 @@ namespace PauloMorgado.Events
 
         private bool TryReleaseExclusiveInternal(object @event, object publisher)
         {
-            Contract.Assume(@event != null, "event is null.");
-            Contract.Assume(publisher != null, "publisher is null.");
+            Contract.Requires(@event != null, "event is null.");
+            Contract.Requires(publisher != null, "publisher is null.");
 
             EventInfo eventInfo = GetEventInfo(@event);
 
@@ -453,6 +455,14 @@ namespace PauloMorgado.Events
             }
 
             return false;
+        }
+
+        [ContractInvariantMethod]
+        private void ObjectInvariant()
+        {
+            Contract.Invariant(this.events != null, "events is null");
+            Contract.Invariant(this.sync != null, "sync is null");
+            Contract.Invariant(this.traceSource != null, "traceSource is null");
         }
     }
 }

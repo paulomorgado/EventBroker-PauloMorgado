@@ -23,11 +23,6 @@ namespace PauloMorgado.Events
     public partial class HierarchicalEventBroker : EventBroker
     {
         /// <summary>
-        /// The trace source.
-        /// </summary>
-        private readonly TraceSource traceSource = new TraceSource("PauloMorgado.Events.HierarchicalEventBroker", SourceLevels.Error);
-
-        /// <summary>
         /// Synchronizes access to the <see cref="F:subscriptions" />.
         /// </summary>
         private readonly ReaderWriterLockSlim sync = new ReaderWriterLockSlim();
@@ -60,9 +55,8 @@ namespace PauloMorgado.Events
         /// </summary>
         /// <param name="defaultPublicationOptions">The default publication options.</param>
         public HierarchicalEventBroker(PublicationOptions defaultPublicationOptions)
-            : base()
+            : this(null, defaultPublicationOptions, new TraceSource("PauloMorgado.Events.HierarchicalEventBroker", SourceLevels.Error))
         {
-            this.defaultPublicationOptions = defaultPublicationOptions;
         }
 
         /// <summary>
@@ -70,19 +64,14 @@ namespace PauloMorgado.Events
         /// </summary>
         /// <param name="parent">The parent <see cref="HierarchicalEventBroker"/>.</param>
         /// <param name="defaultPublicationOptions">The default publication options.</param>
-        private HierarchicalEventBroker(HierarchicalEventBroker parent, PublicationOptions defaultPublicationOptions)
-            : this(defaultPublicationOptions)
+        /// <param name="traceSource">The trace source.</param>
+        private HierarchicalEventBroker(HierarchicalEventBroker parent, PublicationOptions defaultPublicationOptions, TraceSource traceSource)
+            : base(traceSource)
         {
-            this.parent = parent;
-        }
+            Contract.Requires(traceSource != null, "traceSource is null.");
 
-        /// <summary>
-        /// Gets the trace source.
-        /// </summary>
-        /// <value>The trace source.</value>
-        protected override TraceSource TraceSource
-        {
-            get { return this.traceSource; }
+            this.parent = parent;
+            this.defaultPublicationOptions = defaultPublicationOptions;
         }
 
         /// <summary>
@@ -105,9 +94,7 @@ namespace PauloMorgado.Events
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "The object is returned and disposed on the Dispose(bool) method of this instance.")]
         public HierarchicalEventBroker CreateChild(PublicationOptions defaultPublicationOptions)
         {
-            HierarchicalEventBroker newChild = new HierarchicalEventBroker(this, defaultPublicationOptions);
-
-            Contract.Assume(this.sync != null, "sync is null");
+            HierarchicalEventBroker newChild = new HierarchicalEventBroker(this, defaultPublicationOptions, this.TraceSource);
 
             this.sync.EnterWriteLock();
 
@@ -133,8 +120,6 @@ namespace PauloMorgado.Events
         {
             if (disposing)
             {
-                Contract.Assume(this.sync != null, "sync is null");
-
                 this.sync.Dispose();
 
                 if (this.parent != null)
@@ -159,8 +144,7 @@ namespace PauloMorgado.Events
         /// <param name="eventData">The <see cref="T:EventData"/> instance containing the event data.</param>
         protected override void PublishInternal(EventData eventData)
         {
-            Contract.Assume(eventData != null, "eventData is null");
-            Contract.Assume(this.sync != null, "sync is null");
+            //Contract.Requires(eventData != null, "eventData is null");
 
             base.PublishInternal(eventData);
 
@@ -184,6 +168,12 @@ namespace PauloMorgado.Events
             {
                 this.sync.ExitReadLock();
             }
+        }
+
+        [ContractInvariantMethod]
+        private void ObjectInvariant()
+        {
+            Contract.Invariant(this.sync != null, "sync is null");
         }
     }
 }
